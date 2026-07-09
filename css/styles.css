@@ -210,3 +210,27 @@ input[type=number],input[type=text]{font-family:var(--font-mono)}
 #themeSeg{display:flex;gap:2px;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:2px}
 #themeSeg button{border:none;background:transparent;color:var(--muted);border-radius:7px;padding:5px 9px;font-size:13px;cursor:pointer}
 #themeSeg button.active{background:var(--surface);color:var(--brand-deep);box-shadow:var(--card-shadow)}
+
+/* ===== スマホ（縦積み・タッチ） ===== */
+@media (max-width: 820px) {
+  body { height: auto; min-height: 100vh; overflow-y: auto; }
+  #topbar { flex-wrap: wrap; row-gap: 6px; padding: 8px 10px; position: sticky; top: 0; }
+  .brand { font-size: 14px; }
+  .route-name { max-width: 42vw; }
+  #summaryBar { padding: 8px 10px; }
+  #summaryBar .sb-item { min-width: 60px; padding: 2px 8px; }
+  #summaryBar b { font-size: 15px; }
+  /* グリッド→縦フレックス（地図→標高→パネル） */
+  #layout { display: flex; flex-direction: column; }
+  #vhandle, #hhandle { display: none; }
+  #mapArea { order: 1; height: 46vh; min-height: 240px; }
+  #profileArea { order: 2; height: 190px; border-top: 1px solid var(--line); }
+  #side { order: 3; overflow: visible; padding: 10px; }
+  .drag-handle { display: none; }               /* 並べ替えは無効（開閉はタップ可） */
+  .modal-box, .help-box, .settings-box { width: 94vw; max-height: 88vh; }
+  .params input { width: 84px; }
+  .peaks input { width: 60px; }
+  /* タッチしやすいボタン */
+  .btn { padding: 8px 12px; }
+  .stop-row button { width: 26px; font-size: 17px; }
+}

@@ -11,6 +11,10 @@ const Chart = (() => {
     cv.addEventListener('mousemove', handleMove);
     cv.addEventListener('mouseleave', () => { tip.classList.add('hidden'); onHover && onHover(null); });
     cv.addEventListener('click', handleClick); // クリック地点を地図で拡大
+    // タッチ操作: なぞってツールチップ、指を置いた地点を地図で拡大
+    cv.addEventListener('touchstart', e => { if (e.touches[0]) { handleMove(e.touches[0]); handleClick(e.touches[0]); } }, { passive: true });
+    cv.addEventListener('touchmove', e => { if (e.touches[0]) { handleMove(e.touches[0]); e.preventDefault(); } }, { passive: false });
+    cv.addEventListener('touchend', () => { tip.classList.add('hidden'); onHover && onHover(null); });
     cv.style.cursor = 'crosshair';
     window.addEventListener('resize', () => { resize(); render(); });
     resize();
