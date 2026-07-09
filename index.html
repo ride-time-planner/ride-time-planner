@@ -64,7 +64,7 @@
           <div><span>合計重量</span><b id="dTotalW">–</b></div>
           <div><span>パワーウェイト</span><b id="dWkg">–</b></div>
           <div><span>推定VAM(8%)</span><b id="myVam">–</b></div>
-          <div><span>推定FTP(登坂実績)</span><b id="dEstFtp">–</b></div>
+          <div><span>推定FTP / CP</span><b id="dEstFtp">–</b></div>
         </div>
       </div>
 
@@ -131,6 +131,17 @@
         <p>標高グラフ: ホバーで到達時刻/経過、<b>クリックでその地点を地図で拡大</b>。地図左上のボタンで<b>全体表示</b>・<b>地図モード切替</b>。</p>
         <p>パネルは見出しクリックで開閉、<b>⠿</b>ハンドルでドラッグ並べ替え。境界のハンドルで幅/高さを可変。これらの状態は保存されます。</p>
 
+        <h4 class="hgrp">■ 走行時間の算出ロジック</h4>
+        <p>各区間の速度を推定し、距離÷速度で区間タイムを積み上げ、信号停止と滞在時間を足して総所要・到着時刻を出します。区間速度は次を組み合わせます。</p>
+        <ul>
+          <li><b>速度の土台</b>: 勾配ごとに <b>Strava実走の実速度</b> と <b>FTP物理計算</b> をブレンド。校正データがあれば実速度寄り（約7:3）、無ければどちらか一方、どちらも無ければ既定の勾配-速度表。</li>
+          <li><b>登坂</b>: ピークパワーから求めた <b>CP（Critical Power）</b> を使い、登りの継続時間に応じた持続パワーで速度を計算（長い登りは閾値付近）。</li>
+          <li><b>下り</b>: カーブ半径から <b>コーナリング上限</b>（横G）で頭打ち。急な直線は速く、急カーブは減速。</li>
+          <li><b>疲労</b>: 2時間以降、経過に応じて速度をわずかに逓減（実走検証で長距離の精度が向上）。</li>
+          <li><b>信号停止</b>: km あたりの停止秒を距離に比例して加算（急な下りは加算しない）。</li>
+        </ul>
+        <p>物理計算は Martin et al. (1998) の走行パワー式、登坂は Critical Power モデルに基づきます。CdA/Crr・CP は Strava のパワーデータから自動推定できます（実測が無い場合は入力値/既定値）。</p>
+
         <h4 class="hgrp">■ パネルの項目</h4>
         <p><b>サマリ</b>: 開始時刻の入力と、距離・獲得・走行/総所要・到着・平均速度・信号停止・滞在合計・VAM・平均勾配。</p>
         <p><b>主要クライム</b>: 谷→頂を1本の登りとして自動検出し、距離/獲得/平均勾配/VAM/取付通過時刻を表示。地図(紫線＋番号)と標高グラフで色分け。検出条件は⚙設定。</p>
@@ -170,6 +181,8 @@
           <label>空気密度 ρ <input type="number" id="rho" value="1.225" min="0.9" max="1.35" step="0.005" /></label>
           <label>風速 (km/h) <input type="number" id="windSpeed" value="0" min="0" max="60" step="1" /></label>
           <label>風向 (吹いてくる方位°) <input type="number" id="windDir" value="0" min="0" max="359" step="5" /></label>
+          <label>下りコーナリング上限 (横G) <input type="number" id="cornerG" value="0.40" min="0" max="0.7" step="0.05" /></label>
+          <label>疲労減衰 (%/時, 2h以降) <input type="number" id="fatigue" value="3.0" min="0" max="10" step="0.5" /></label>
         </div>
 
         <div class="subhead">経過時間マーカー</div>

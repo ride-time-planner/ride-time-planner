@@ -34,6 +34,9 @@ const FitParser = (() => {
     // デバイス積算距離(field5, cm単位ではなく 1/100 m)。GPS距離の膨張回避に使用。
     const dd = v[5];
     if (dd != null && dd !== 0xFFFFFFFF) p.dev = dd / 100; // m
+    // パワー(field7, W) / 速度(field6, 1/1000 m/s) ← CdA/CP 自動推定に使用
+    if (v[7] != null && v[7] !== 0xFFFF) p.pw = v[7];
+    if (v[6] != null && v[6] !== 0xFFFF) p.spd = v[6] / 1000;
     points.push(p);
   }
 

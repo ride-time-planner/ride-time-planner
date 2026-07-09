@@ -299,11 +299,58 @@ const Importer = (() => {
     return [];
   }
 
+  // パワー付きトラックから CP(ピーク) と CdA/Crr(物理回帰) の材料を蓄積
+  const POW_DUR = { 180: '3m', 300: '5m', 600: '10m', 1200: '20m' };
+  function accumulatePower(acc, points) {
+    const pw = []; for (const p of points) if (Number.isFinite(p.pw)) pw.push(p.pw);
+    if (pw.length < 60) return; // パワー無し/短すぎ
+    acc.hasPower = true;
+    // 継続時間別ベスト平均パワー（≈1Hz前提, 累積和でO(n)）
+    const cs = [0]; for (const x of pw) cs.push(cs[cs.length - 1] + x);
+    for (const d in POW_DUR) {
+      const w = +d; if (w > pw.length) continue;
+      let m = 0; for (let i = 0; i + w <= pw.length; i++) { const s = (cs[i + w] - cs[i]) / w; if (s > m) m = s; }
+      if (m > (acc.best[d] || 0)) acc.best[d] = m;
+    }
+    // CdA/Crr 回帰用サンプル（10秒窓, 推進局面のみ）
+    const n = points.length; let i = 0;
+    while (i < n - 1) {
+      const t0 = points[i].t; let j = i;
+      while (j < n - 1 && points[j].t - t0 < 10000) j++;
+      const dt = (points[j].t - points[i].t) / 1000, dd = (points[j].dist - points[i].dist) * 1000;
+      let ps = 0, pc = 0; for (let k = i; k <= j; k++) if (Number.isFinite(points[k].pw)) { ps += points[k].pw; pc++; }
+      if (dt >= 8 && dt <= 15 && dd > 20 && pc) {
+        const v = dd / dt, P = ps / pc, grade = (points[j].ele - points[i].ele) / dd;
+        if (v >= 3 && v <= 18 && P >= 60 && grade >= -0.005 && grade <= 0.15) {
+          const th = Math.atan(grade), F = P * 0.976 / v, Y = F - acc.mass * 9.80665 * Math.sin(th);
+          const x1 = acc.mass * 9.80665 * Math.cos(th), x2 = 0.5 * 1.225 * v * v;
+          acc.X11 += x1 * x1; acc.X12 += x1 * x2; acc.X22 += x2 * x2; acc.Y1 += x1 * Y; acc.Y2 += x2 * Y; acc.n++;
+        }
+      }
+      i = j;
+    }
+  }
+  function finalizePower(acc) {
+    const peaks = {}; for (const d in acc.best) if (POW_DUR[d]) peaks[POW_DUR[d]] = Math.round(acc.best[d]);
+    let cda = null, crr = null;
+    const det = acc.X11 * acc.X22 - acc.X12 * acc.X12;
+    if (acc.n > 200 && det) {
+      crr = (acc.Y1 * acc.X22 - acc.Y2 * acc.X12) / det;
+      cda = (acc.X11 * acc.Y2 - acc.X12 * acc.Y1) / det;
+    }
+    return {
+      hasPower: acc.hasPower, peaks, samplesN: acc.n,
+      cda: (cda > 0.15 && cda < 0.6) ? +cda.toFixed(3) : null,
+      crr: (crr > 0.002 && crr < 0.015) ? +crr.toFixed(4) : null
+    };
+  }
+
   // 大量ファイルを逐次処理してストリーミング校正（メモリ上限・UI非ブロッキング・進捗）。
   // onProgress(done, total, usable) を随時呼ぶ。全トラックを保持しないので大量投入に強い。
   async function calibrateFiles(fileList, screening = {}, onProgress) {
     const CAP = 6000; // バケットごとの標本上限（中央値には十分・メモリ保護）
     const merged = {}; BUCKETS.forEach(b => merged[b.key] = []);
+    const powAcc = { hasPower: false, best: {}, X11: 0, X12: 0, X22: 0, Y1: 0, Y2: 0, n: 0, mass: screening.mass || 79 };
     let usable = 0, skipped = 0;
     const files = [...fileList];
     for (let i = 0; i < files.length; i++) {
@@ -317,6 +364,7 @@ const Importer = (() => {
           const arr = merged[b.key], src = s[b.key];
           for (let j = 0; j < src.length; j++) { if (arr.length < CAP) arr.push(src[j]); }
         }
+        try { accumulatePower(powAcc, tr.points); } catch (_) { }
       }
       if (onProgress && (i % 3 === 0 || i === files.length - 1)) onProgress(i + 1, files.length, usable);
       if (i % 8 === 7) await new Promise(r => setTimeout(r)); // UIへ制御を返す（フリーズ防止）
@@ -328,7 +376,7 @@ const Importer = (() => {
     for (const b of BUCKETS) factors[b.key] = (med[b.key] && flatSpeed) ? +(med[b.key] / flatSpeed).toFixed(3) : DEFAULT_FACTORS[b.key];
     factors.flat = 1.0;
     const sampleN = Object.values(counts).reduce((a, n) => a + n, 0);
-    return { flatSpeed: +flatSpeed.toFixed(1), factors, counts, sampleN, usableTracks: usable, skipped };
+    return { flatSpeed: +flatSpeed.toFixed(1), factors, counts, sampleN, usableTracks: usable, skipped, power: finalizePower(powAcc) };
   }
 
   return { parseTrack, parseFit, sampleSpeeds, calibrate, calibrateFiles, loadFiles, loadOne, BUCKETS };

@@ -75,7 +75,8 @@ const MapView = (() => {
       for (const p of points) { if (p.dist >= s.distKm) { pt = p; break; } }
       const label = (s.label && s.label.trim()) || `P${idx + 1}`;
       stopLayers.push(L.marker([pt.lat, pt.lng], {
-        icon: L.divIcon({ className: 'stop-poi', html: `<span class="dot"></span><span class="lab">${label}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] })
+        icon: L.divIcon({ className: 'stop-poi', html: `<span class="dot"></span><span class="lab">${label}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] }),
+        zIndexOffset: 300000
       }).addTo(map));
     });
   }
@@ -98,7 +99,7 @@ const MapView = (() => {
           className: 'time-marker tm-' + (m.kind || 'time'),
           html: `<span class="dot"></span><span class="lab">${head}<b>${m.clock}</b>${m.elapsedStr}</span>`,
           iconSize: [0, 0], iconAnchor: [0, 0]
-        }), interactive: false, zIndexOffset: m.kind === 'time' ? 0 : 1000
+        }), interactive: false, zIndexOffset: m.kind === 'time' ? 100000 : 200000
       }).addTo(map));
     });
   }

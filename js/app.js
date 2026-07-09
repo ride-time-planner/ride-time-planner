@@ -156,6 +156,8 @@
     $('excludeKw').value = f.excludeKeyword ?? '通勤';
     $('maxDays').value = f.maxDays ?? 0;
     $('timeMarkerMin').value = st.timeMarkerMin ?? 30;
+    $('cornerG').value = st.cornerG ?? 0.40;
+    $('fatigue').value = st.fatigue ?? 0;
     // 信号停止（ルート単位）
     $('signalRate').value = plan.signalRate ?? 19;
     if (State.get('route')) $('routeName').textContent = State.get('route').name;
@@ -208,8 +210,15 @@
     $('dWkg').textContent = (pf.ftp && pf.riderWeight) ? (pf.ftp / pf.riderWeight).toFixed(2) + ' W/kg' : '–';
     const v = Models.unifiedSpeed(0.08, pf);
     $('myVam').textContent = Math.round(v * Math.sin(Math.atan(0.08)) * 1000) + ' m/h';
-    const est = Models.estimateFtp(pf);
-    $('dEstFtp').textContent = est ? est + ' W' : '– (要Strava校正)';
+    const cpw = Models.estimateCP(pf.peaks);
+    if (cpw) {
+      $('dEstFtp').textContent = `${cpw.cp} W (CP)`;
+      $('dEstFtp').title = `Critical Power=${cpw.cp}W / W'=${(cpw.wprime / 1000).toFixed(1)}kJ（ピークパワーから推定）`;
+    } else {
+      const est = Models.estimateFtp(pf);
+      $('dEstFtp').textContent = est ? est + ' W' : '– (ピーク or Strava校正)';
+      $('dEstFtp').title = '登坂実績 or ピークパワーから推定';
+    }
   }
 
   // 滞在ポイントUI
@@ -237,9 +246,9 @@
   function recompute() {
     const route = State.get('route');
     if (!route || !route.points || route.points.length < 2) { Chart.setData(null); return; }
-    const pf = State.get('profile'), plan = State.get('plan');
+    const pf = State.get('profile'), plan = State.get('plan'), sset = State.get('settings');
     const st = Route.stats(route.points);
-    const res = Models.compute(route.points, pf);
+    const res = Models.compute(route.points, pf, { cornerG: sset.cornerG ?? 0.40, fatigue: (sset.fatigue ?? 0) / 100 });
     const rate = plan.signalRate ?? 19;
     const sched = Schedule.build(route.points, res.segTimes, plan.stops, rate);
     const totalSec = res.movingSec + sched.stopSec + sched.signalSec;
@@ -367,6 +376,9 @@
 
     // 経過時間マーカー間隔（設定ダイアログ）
     $('timeMarkerMin').addEventListener('input', () => { State.get('settings').timeMarkerMin = +$('timeMarkerMin').value || 0; State.save(); recompute(); });
+    // 下りコーナリング上限・疲労減衰
+    $('cornerG').addEventListener('input', () => { State.get('settings').cornerG = +$('cornerG').value || 0; State.save(); recompute(); });
+    $('fatigue').addEventListener('input', () => { State.get('settings').fatigue = +$('fatigue').value || 0; State.save(); recompute(); });
 
     // 主要クライム検出条件（設定ダイアログ・ユーザー単位）
     $('climbMinGain').addEventListener('change', () => { State.get('profile').climbMinGain = +$('climbMinGain').value || 120; State.save(); recompute(); });
@@ -403,18 +415,34 @@
     $('stravaInput').addEventListener('change', async e => {
       const files = [...e.target.files]; if (!files.length) return;
       const f = State.get('settings').importFilter || {};
+      const pf0 = State.get('profile');
+      const mass = (pf0.riderWeight || 68) + (pf0.bikeWeight || 9) + (pf0.gearWeight || 2);
       const minKm = f.minKm ?? 15, excludeKeyword = f.excludeKeyword ?? '', maxDays = f.maxDays ?? 0;
       const box = $('calibResult');
       box.classList.remove('hidden');
       box.innerHTML = `取り込み中… 0 / ${files.length}`;
       try {
-        const cal = await Importer.calibrateFiles(files, { minKm, excludeKeyword, maxDays },
+        const cal = await Importer.calibrateFiles(files, { minKm, excludeKeyword, maxDays, mass },
           (done, total, usable) => { box.innerHTML = `解析中… ${done} / ${total}（有効 ${usable} 本）`; });
         if (!cal.usableTracks) throw new Error('時刻付きの実走データがありません（GPX/TCXに時刻が必要）');
         const pf = State.get('profile');
         pf.flatSpeed = cal.flatSpeed; pf.factors = cal.factors;
         pf.calibration = { usableTracks: cal.usableTracks, sampleN: cal.sampleN, counts: cal.counts, skipped: cal.skipped };
+        // パワーFITがあれば CP(ピーク) / CdA / Crr を自動適用
+        let pmsg = '';
+        if (cal.power && cal.power.hasPower) {
+          pf.peaks = pf.peaks || {};
+          for (const k in cal.power.peaks) pf.peaks[k] = cal.power.peaks[k];
+          document.querySelectorAll('input[data-peak]').forEach(inp => { if (pf.peaks[inp.dataset.peak] != null) inp.value = pf.peaks[inp.dataset.peak]; });
+          const parts = ['ピーク更新'];
+          if (cal.power.cda) { pf.cda = cal.power.cda; $('cda').value = cal.power.cda; parts.push('CdA=' + cal.power.cda); }
+          if (cal.power.crr) { pf.crr = cal.power.crr; $('crr').value = cal.power.crr; parts.push('Crr=' + cal.power.crr); }
+          const cpw = Models.estimateCP(pf.peaks);
+          if (cpw) parts.push('CP=' + cpw.cp + 'W');
+          pmsg = `<div class="muted">パワー自動推定: ${parts.join(' / ')}（標本${cal.power.samplesN}）</div>`;
+        }
         State.save(); renderCalib(); updateDerived(); recompute();
+        if (pmsg) box.insertAdjacentHTML('beforeend', pmsg);
       } catch (err) {
         box.innerHTML = 'エラー: ' + err.message;
       }

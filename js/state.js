@@ -29,6 +29,8 @@ const State = (() => {
       layout: { sideW: 320, profileH: 230 },
       hideProfile: false, hideSide: false,
       timeMarkerMin: 30, // 経過時間マーカーの間隔(分, 0=非表示)
+      cornerG: 0.40,     // 下りのコーナリング上限（横加速度, g）
+      fatigue: 3.0,      // 疲労減衰（%/時, 2時間以降。検証で長距離の誤差を大幅改善）
       importFilter: { minKm: 15, excludeKeyword: '通勤', maxDays: 730 }
     },
     routeData: {}, // ルート単位の {startTime, stops, signalRate} を key で保持
