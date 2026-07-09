@@ -15,6 +15,8 @@
     if (State.get('route')) { MapView.draw(State.get('route').points); }
     Chart.resize(); // レイアウト(保存済みパネル高さ)適用後にキャンバスを再計測
     setTimeout(() => { MapView.invalidate(); Chart.resize(); Chart.render(); }, 200);
+    // 画面リサイズ/回転で地図とグラフを追従
+    let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { MapView.invalidate(); Chart.resize(); Chart.render(); }, 200); });
     recompute();
   }
 
