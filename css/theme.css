@@ -1,0 +1,228 @@
+/* =====================================================================
+   ルート走破時間シミュレータ — テーマトークン
+   使い方:
+     <html data-theme="light">  ... 明るいクリーンテーマ（Aurora Light）
+     <html data-theme="cyber">  ... サイバーパンク・ネオンテーマ
+   JSでトグル: document.documentElement.dataset.theme = 'cyber';
+     （localStorageに保存すると次回も維持されます）
+   ===================================================================== */
+
+/* ---- フォント ---- */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;600;700&display=swap');
+
+/* =====================================================================
+   LIGHT — Aurora
+   ===================================================================== */
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* ベース */
+  --bg:            #eef1ec;   /* アプリ背景 */
+  --fg:            #0f1714;   /* 主要テキスト */
+  --muted:         #8a978f;   /* 補助テキスト */
+  --muted-2:       #5b6b64;   /* セクション見出し */
+  --faint:         #a5b0a8;   /* 目盛り・注記 */
+
+  /* 面 */
+  --surface:       #ffffff;               /* カード */
+  --surface-2:     #f4f7f3;               /* 入力・タイル */
+  --header-bg:     rgba(255,255,255,.75); /* + backdrop-filter: blur(16px) */
+  --line:          rgba(15,23,20,.07);    /* 区切り線 */
+  --line-strong:   rgba(15,23,20,.12);    /* ボタン枠 */
+  --card-radius:   16px;
+  --card-shadow:   0 1px 2px rgba(0,0,0,.05), 0 20px 40px -30px rgba(0,0,0,.35);
+
+  /* アクセント */
+  --brand:         #12b981;   /* ミント（ブランド） */
+  --brand-deep:    #0f8a63;   /* 濃ミント（文字/リンク） */
+  --brand-grad:    linear-gradient(135deg, #12b981, #4be0b0);
+  --brand-soft:    #eafaf3;   /* ミント淡背景 */
+
+  --route:         #ff5a1f;   /* ルート/標高ライン(オレンジ) */
+  --route-halo:    rgba(255,90,31,.25);
+  --route-glow:    none;
+
+  --climb:         #7c5cff;   /* クライム(パープル) */
+  --climb-soft:    rgba(124,92,255,.12);
+  --band:          rgba(124,92,255,.14);  /* 標高の登坂バンド */
+
+  --poi:           #2563eb;   /* POI縦線(ブルー) */
+  --poi-soft:      #eaf1ff;
+
+  --warm-grad:     linear-gradient(135deg, #ff6b3d, #ff8a3d); /* Strava CTA */
+  --estimate-bg:   linear-gradient(135deg, #eafaf3, #f0f7ee);
+
+  /* 地図の地形（プレースホルダ。実地図では不要） */
+  --map-bg: radial-gradient(130% 100% at 12% 18%, #dfe9d8, transparent 55%),
+            radial-gradient(120% 90% at 78% 22%, #eef0e0, transparent 55%),
+            linear-gradient(160deg, #edf1e8, #e5ece2);
+
+  /* タイポ */
+  --font-display: 'Space Grotesk', system-ui, sans-serif; /* 見出し・数値 */
+  --font-body:    system-ui, -apple-system, 'Noto Sans JP', sans-serif;
+  --font-mono:    'DM Mono', ui-monospace, monospace;      /* 数値入力 */
+  --num-shadow:   none;      /* 数値のグロー（Lightは無し） */
+  --heading-caps: none;      /* 見出しの大文字化 */
+  --heading-ls:   normal;    /* 見出しの字間 */
+}
+
+/* =====================================================================
+   CYBER — Neon
+   ===================================================================== */
+[data-theme="cyber"] {
+  color-scheme: dark;
+
+  --bg:            #05060f;
+  --fg:            #d6e6ff;
+  --muted:         #6b86ad;
+  --muted-2:       #8fa6c8;
+  --faint:         #3a5170;
+
+  --surface:       rgba(10,13,30,.70);
+  --surface-2:     rgba(0,229,255,.05);
+  --header-bg:     rgba(8,10,24,.85);
+  --line:          rgba(0,229,255,.18);
+  --line-strong:   rgba(0,229,255,.25);
+  --card-radius:   14px;
+  --card-shadow:   inset 0 0 40px rgba(0,229,255,.04);
+
+  --brand:         #00e5ff;   /* シアン */
+  --brand-deep:    #3df6ff;
+  --brand-grad:    linear-gradient(135deg, #00e5ff, #54f5ff);
+  --brand-soft:    rgba(0,229,255,.12);
+
+  --route:         #3df6ff;
+  --route-halo:    rgba(0,229,255,.25);
+  --route-glow:    drop-shadow(0 0 6px rgba(0,229,255,1)); /* SVGルート/標高に filter で適用 */
+
+  --climb:         #ff2fb0;   /* マゼンタ */
+  --climb-soft:    rgba(255,47,176,.16);
+  --band:          rgba(255,47,176,.14);
+
+  --poi:           #00e5ff;
+  --poi-soft:      rgba(0,229,255,.14);
+
+  --warm-grad:     linear-gradient(135deg, #ff2fb0, #ff6fca);
+  --estimate-bg:   linear-gradient(135deg, rgba(0,229,255,.10), rgba(255,47,176,.06));
+
+  --map-bg: radial-gradient(120% 100% at 20% 15%, #0c1430, transparent 55%),
+            radial-gradient(120% 90% at 80% 30%, #1a0a24, transparent 55%),
+            linear-gradient(160deg, #070a1a, #04030c);
+
+  --font-display: 'Chakra Petch', 'Space Grotesk', system-ui, sans-serif;
+  --font-body:    system-ui, -apple-system, 'Noto Sans JP', sans-serif;
+  --font-mono:    'DM Mono', ui-monospace, monospace;
+  --num-shadow:   0 0 12px rgba(0,229,255,.55);
+  --heading-caps: uppercase;
+  --heading-ls:   .06em;
+}
+
+/* Cyberだけ背景にネオングリッドを敷く */
+[data-theme="cyber"] body {
+  background-image:
+    linear-gradient(rgba(0,229,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,47,176,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* =====================================================================
+   共通コンポーネント（トークンを参照するだけ。クラス名は自由に合わせて）
+   ===================================================================== */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+}
+
+.app-header {
+  background: var(--header-bg);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand-logo {                       /* ヘッダー左のアイコン地 */
+  background: var(--brand-grad);
+  box-shadow: 0 0 16px -2px var(--brand);
+  border-radius: 9px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+
+.section-title {                    /* 「主要クライム」等の小見出し */
+  font: 600 11px var(--font-display);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+.section-title .dot {               /* 見出し左の丸ポチ */
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 6px var(--brand);  /* Lightではglow弱→ほぼ効かない、Cyberで光る */
+}
+
+.kpi-value {                        /* 上部KPIストリップの大きな数値 */
+  font: 700 25px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  text-shadow: var(--num-shadow);
+}
+.kpi-label {
+  font: 600 10px var(--font-display);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field {                            /* 数値入力・タイル */
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font: 600 13px var(--font-mono);
+  color: var(--fg);
+}
+
+.btn-primary {                      /* GPX読込 / 閉じる 等 */
+  background: var(--brand-grad);
+  color: #05060f;
+  border: none;
+  border-radius: 9px;
+  box-shadow: 0 0 14px -2px var(--brand);
+  font-weight: 700;
+}
+.btn-strava {                       /* Strava CTA */
+  background: var(--warm-grad);
+  color: #fff;
+  border: none;
+}
+
+.estimate-box {                     /* 推定値のまとめ枠 */
+  background: var(--estimate-bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.estimate-box .value {
+  font: 700 17px var(--font-display);
+  color: var(--brand-deep);
+  text-shadow: var(--num-shadow);
+}
+
+/* 地図・標高（SVG） -------------------------------------------------- */
+.map { background: var(--map-bg); }
+
+.route-line   { stroke: var(--route); stroke-width: 3; fill: none; stroke-linecap: round;
+                filter: var(--route-glow); }
+.route-halo   { stroke: var(--route-halo); stroke-width: 14; fill: none; stroke-linecap: round; }
+.elev-line    { stroke: var(--route); stroke-width: 2.4; fill: none; vector-effect: non-scaling-stroke;
+                filter: var(--route-glow); }
+.elev-band    { background: var(--band); border-left: 1px dashed var(--climb); border-right: 1px dashed var(--climb); }
+
+.poi-pin-dot  { width: 10px; height: 10px; border-radius: 50%; background: var(--brand);
+                box-shadow: 0 0 10px 2px var(--brand); }   /* Cyberで強く光る */
+.climb-badge  { background: var(--climb); color: #05060f; border-radius: 50%;
+                box-shadow: 0 0 12px 1px var(--climb); font: 700 12px var(--font-display); }
