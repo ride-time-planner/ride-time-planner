@@ -56,5 +56,4 @@ DESIGN.md / VALIDATION.md … 設計・検証メモ
 - フォント: Google Fonts (Space Grotesk / Chakra Petch / DM Mono / Noto Sans JP)
 - 本体コード: MIT License（`LICENSE` 参照）
 
-v
 > 注意: 地図タイルは各提供元の利用規約の範囲でご利用ください。大規模アクセスが見込まれる場合は、タイル提供元の商用/専用プラン（MapTiler 等）への切り替えを検討してください。

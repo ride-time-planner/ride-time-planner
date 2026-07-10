@@ -37,6 +37,8 @@ input[type=number],input[type=text],input[type=time]{
   border:1px solid var(--line);border-radius:7px;padding:4px 7px}
 input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 input[type=file]{display:none}
+select{font:inherit;font-size:12px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:4px 6px;max-width:150px}
+.params select{width:auto}
 
 /* ---- サマリバー（ヘッダー下） ---- */
 #summaryBar{flex:0 0 auto;display:flex;gap:6px;align-items:stretch;padding:8px 14px;
@@ -148,11 +150,18 @@ body.resizing iframe,body.resizing #map{pointer-events:none}
   font-size:15px;text-align:center;color:var(--text);text-decoration:none;display:block}
 .map-ctl a.mode-btn{font-size:12px;font-weight:600}
 .map-ctl a:hover{background:var(--panel2)}
-/* Leaflet のルート/クライム線（テーマ連動＋グロー） */
+/* Leaflet のルート/クライム線 */
 .leaflet-interactive.route-line{stroke:var(--route);filter:var(--route-glow)}
-.leaflet-interactive.climb-line{stroke:var(--climb);filter:var(--route-glow)}
-.climb-badge{background:var(--climb);color:#05060f;border:2px solid #fff;border-radius:50%;
-  width:18px;height:18px;line-height:15px;text-align:center;font-size:11px;font-weight:700;box-shadow:0 0 8px 1px var(--climb),0 1px 3px #0005}
+/* 日の出☀/日の入り🌙マーカー */
+.sun-marker{position:absolute}
+.sun-marker .ic{position:absolute;left:0;top:0;transform:translate(-50%,-50%);font-size:17px;line-height:1;filter:drop-shadow(0 1px 2px #0007)}
+.sun-marker .lab{position:absolute;left:0;top:11px;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:700;color:#fff;padding:1px 5px;border-radius:4px;box-shadow:0 1px 2px #0005}
+.sun-sunrise .lab{background:#f59e0b}
+.sun-sunset .lab{background:#475569}
+.leaflet-interactive.climb-line{stroke:#15803d;filter:var(--route-glow)} /* 主要クライム=緑・太線 */
+.climb-badge{background:#15803d;color:#fff;border:2px solid #fff;border-radius:50%;
+  width:18px;height:18px;line-height:15px;text-align:center;font-size:11px;font-weight:700;box-shadow:0 0 8px 1px #15803d,0 1px 3px #0005}
+.signal-ico{filter:drop-shadow(0 1px 2px #0006)}
 .time-marker{position:absolute}
 .time-marker .dot{position:absolute;left:0;top:0;transform:translate(-50%,-50%);width:9px;height:9px;border-radius:50%;background:var(--brand);border:2px solid #fff;box-shadow:0 0 6px var(--brand),0 0 2px #0006}
 .time-marker .lab{position:absolute;left:7px;top:0;transform:translateY(-50%);white-space:nowrap;background:var(--brand);color:#05060f;
@@ -165,7 +174,19 @@ body.resizing iframe,body.resizing #map{pointer-events:none}
 .time-marker.tm-goal .lab{background:#dc2626ee;color:#fff}
 .stop-poi{position:absolute}
 .stop-poi .dot{position:absolute;left:0;top:0;transform:translate(-50%,-50%);width:9px;height:9px;border-radius:50%;background:var(--accent2);border:2px solid #fff;box-shadow:0 0 2px #0006}
-.stop-poi .lab{position:absolute;left:7px;top:0;transform:translateY(-50%);white-space:nowrap;background:var(--accent2);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;box-shadow:0 1px 2px #0005}
+.stop-poi .lab{position:absolute;left:7px;top:0;transform:translateY(-50%);white-space:nowrap;background:var(--accent2);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;box-shadow:0 1px 2px #0005;display:flex;flex-direction:column;line-height:1.2}
+.stop-poi .lab em{font-style:normal;font-weight:700}
+.stop-poi .lab b{font-weight:700}
+.stop-poi .lab i{font-style:normal;font-size:9px;opacity:.85}
+
+/* 外部データ取得の進捗インジケーター（🌐ボタンの下） */
+.ext-wrap{position:relative;display:inline-flex}
+.ext-prog{position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);z-index:1200;
+  white-space:nowrap;font-size:10px;background:var(--panel,#fff);color:var(--text,#333);
+  border:1px solid var(--line,#ddd);border-radius:6px;padding:3px 7px;box-shadow:0 2px 8px #0003}
+.ext-prog.err{border-color:#dc2626;color:#dc2626}
+.ext-prog .bar{display:block;height:3px;margin-top:3px;background:var(--line,#e5e5e5);border-radius:2px;overflow:hidden}
+.ext-prog .bar>i{display:block;height:100%;background:var(--brand,#12b981);width:0;transition:width .25s}
 
 /* ---- モーダル ---- */
 .modal{position:fixed;inset:0;background:rgba(30,25,15,.42);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(2px)}

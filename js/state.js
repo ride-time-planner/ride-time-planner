@@ -8,6 +8,7 @@ const State = (() => {
     profile: {
       flatSpeed: 25,
       height: 170, ftp: 250, intensity: 0.75, riderWeight: 68, bikeWeight: 9, gearWeight: 2,
+      position: 'hoods', bikeType: 'road', // ポジション→CdA / バイク種別→Crr のプリセット
       cda: 0.32, crr: 0.005, rho: 1.225,
       // Zwift 指標（手動入力・参考値）
       zmap: null, vo2max: null,
