@@ -119,18 +119,18 @@ const Chart = (() => {
       for (const p of seg) ctx.lineTo(xOf(p.dist, b), yOf(p.ele, b));
       ctx.lineTo(xOf(seg[seg.length - 1].dist, b), cv._h - pad.b);
       ctx.closePath();
-      ctx.fillStyle = T.climb + '33'; ctx.fill();
-      // フチ→クライム色で稜線と区別
+      ctx.fillStyle = '#15803d33'; ctx.fill();
+      // 白フチ→緑で稜線と区別（主要クライム）
       ctx.beginPath();
       seg.forEach((p, i) => { const x = xOf(p.dist, b), y = yOf(p.ele, b); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4.5; ctx.stroke();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5; ctx.stroke();
       ctx.beginPath();
       seg.forEach((p, i) => { const x = xOf(p.dist, b), y = yOf(p.ele, b); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-      ctx.strokeStyle = T.climb; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.strokeStyle = '#15803d'; ctx.lineWidth = 3; ctx.stroke();
       // 番号バッジ
       const mid = seg[Math.floor(seg.length / 2)];
       const bx = xOf(mid.dist, b), by = yOf(mid.ele, b) - 10;
-      ctx.fillStyle = T.climb; ctx.beginPath(); ctx.arc(bx, by, 7, 0, 7); ctx.fill();
+      ctx.fillStyle = '#15803d'; ctx.beginPath(); ctx.arc(bx, by, 7, 0, 7); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.font = 'bold 10px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(String(idx + 1), bx, by); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     });
@@ -161,6 +161,20 @@ const Chart = (() => {
       ctx.fillText(m.clock, x, cv._h - pad.b - 14);
       ctx.fillStyle = col + '99'; ctx.font = '9px system-ui'; ctx.fillText(m.elapsedStr, x, cv._h - pad.b - 4);
       ctx.textAlign = 'left';
+    });
+
+    // 日の出☀/日の入り🌙（ライドが該当時刻を通過する距離に描画）
+    (model.sun || []).forEach(ev => {
+      if (ev.distKm < b.distMin || ev.distKm > b.distMax) return;
+      const x = xOf(ev.distKm, b);
+      ctx.strokeStyle = (ev.kind === 'sunrise' ? '#f59e0b' : '#475569') + 'aa'; ctx.setLineDash([2, 3]);
+      ctx.beginPath(); ctx.moveTo(x, pad.t + 14); ctx.lineTo(x, cv._h - pad.b); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = '14px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(ev.kind === 'sunrise' ? '☀' : '🌙', x, pad.t + 8);
+      ctx.fillStyle = ev.kind === 'sunrise' ? '#b45309' : '#334155'; ctx.font = '9px system-ui';
+      ctx.fillText((ev.kind === 'sunrise' ? '日の出 ' : '日の入り ') + ev.clock, x, pad.t + 20);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     });
 
     // 滞在ポイント縦線＋ラベル

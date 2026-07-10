@@ -1,6 +1,9 @@
 /* app.js — 画面初期化・イベント配線・全体オーケストレーション */
 (() => {
   const $ = id => document.getElementById(id);
+  const meanEle = pts => { let s = 0, n = 0; for (const p of pts) if (Number.isFinite(p.ele)) { s += p.ele; n++; } return n ? s / n : 0; };
+  const POS_CDA = { upright: 0.45, touring: 0.40, hoods: 0.32, drops: 0.28, aero: 0.23 };
+  const BIKE_CRR = { road: 0.005, endurance: 0.006, gravel: 0.010, mtb: 0.014, city: 0.008 };
 
   function boot() {
     MapView.init();
@@ -141,6 +144,8 @@
     $('ftp').value = pf.ftp; $('intensity').value = Math.round(pf.intensity * 100);
     $('riderWeight').value = pf.riderWeight; $('bikeWeight').value = pf.bikeWeight;
     $('gearWeight').value = pf.gearWeight ?? 2;
+    $('position').value = pf.position || 'hoods';
+    $('bikeType').value = pf.bikeType || 'road';
     $('cda').value = pf.cda; $('crr').value = pf.crr; $('rho').value = pf.rho;
     $('windSpeed').value = pf.wind?.speed ?? 0; $('windDir').value = pf.wind?.dir ?? 0;
     $('zftp').value = pf.ftp || '';
@@ -268,10 +273,18 @@
     const climbs = Models.detectClimbs(route.points, res.segTimes, { minGain, startGrade });
     renderClimbs(climbs, route.points, sched, startSec, minGain);
     const markers = buildTimeMarkers(route.points, sched.arrive, startSec, State.get('settings').timeMarkerMin);
+    const sun = MapView.sunEvents(route.points, sched.arrive, startSec);
+    // 滞在ポイントに到着時刻/経過を付与
+    const stopsInfo = (plan.stops || []).map(s => {
+      if (!isFinite(s.distKm)) return s;
+      const e = Schedule.timeAtDist(route.points, sched.arrive, s.distKm);
+      return Object.assign({}, s, { elapsed: e, clock: Schedule.fmtClock(startSec, e), elapsedStr: Schedule.fmtDur(e) });
+    });
+    MapView.drawSun(sun);
     MapView.drawClimbs(route.points, climbs);
-    MapView.drawStops(route.points, plan.stops);
+    MapView.drawStops(route.points, stopsInfo);
     MapView.drawTimeMarkers(markers);
-    Chart.setData({ points: route.points, arrive: sched.arrive, startSec, stops: plan.stops, climbs, markers });
+    Chart.setData({ points: route.points, arrive: sched.arrive, startSec, stops: stopsInfo, climbs, markers, sun });
   }
 
   // 経過時間マーカー。スタート/ゴール＋interval分おき。到達経過(arrive)を反転して位置を求める。
@@ -354,6 +367,7 @@
     $('startTime').value = State.get('plan').startTime;
     $('signalRate').value = State.get('plan').signalRate ?? 19;
     renderStops();
+    MapView.drawSignals([]); // 前ルートの信号を消去
     MapView.draw(route.points);
     setTimeout(() => MapView.invalidate(), 100);
     recompute();
@@ -398,6 +412,16 @@
     // パラメータ変更
     ['height', 'ftp', 'intensity', 'riderWeight', 'bikeWeight', 'gearWeight', 'cda', 'crr', 'rho', 'windSpeed', 'windDir']
       .forEach(id => $(id).addEventListener('input', () => { readProfile(); recompute(); }));
+
+    // ポジション→CdA / バイク種別→Crr プリセット（設定の数値も更新）
+    $('position').addEventListener('change', () => {
+      const pf = State.get('profile'); pf.position = $('position').value;
+      pf.cda = POS_CDA[pf.position] ?? pf.cda; $('cda').value = pf.cda; State.save(); updateDerived(); recompute();
+    });
+    $('bikeType').addEventListener('change', () => {
+      const pf = State.get('profile'); pf.bikeType = $('bikeType').value;
+      pf.crr = BIKE_CRR[pf.bikeType] ?? pf.crr; $('crr').value = pf.crr; State.save(); updateDerived(); recompute();
+    });
 
     // Zwift 指標
     $('zftp').addEventListener('input', () => {
@@ -459,6 +483,50 @@
     $('addStop').addEventListener('click', () => {
       State.get('plan').stops.push({ distKm: 0, durationMin: 10, label: '' });
       persistRoutePlan(); renderStops(); recompute();
+    });
+
+    // 外部データ取得（天気・信号・路面）
+    function setProg(html, frac, isError) {
+      const el = $('extProg'); if (!el) return;
+      el.classList.remove('hidden'); el.classList.toggle('err', !!isError);
+      const bar = frac == null ? '' : `<span class="bar"><i style="width:${Math.round(frac * 100)}%"></i></span>`;
+      el.innerHTML = `<span class="txt">${html}</span>${bar}`;
+    }
+    function hideProg(delay) { const el = $('extProg'); if (!el) return; setTimeout(() => el.classList.add('hidden'), delay || 0); }
+
+    $('extBtn').addEventListener('click', async () => {
+      const route = State.get('route'); if (!route) { setProg('先にGPXを読み込んでください', null, true); hideProg(3000); return; }
+      const pts = route.points, mid = pts[Math.floor(pts.length / 2)];
+      const pf = State.get('profile'), plan = State.get('plan');
+      const km = pts[pts.length - 1].dist || 1;
+      $('extBtn').textContent = '⏳';
+      const done = [];
+      try {
+        setProg('天気を取得中…');
+        try {
+          const wx = await Ext.weather(mid.lat, mid.lng);
+          if (wx.windSpeed != null) { pf.wind = { speed: Math.round(wx.windSpeed), dir: Math.round(wx.windDir) }; $('windSpeed').value = pf.wind.speed; $('windDir').value = pf.wind.dir; done.push('風' + pf.wind.speed + 'km/h'); }
+          if (wx.temp != null) { const h = meanEle(pts); const p = 101325 * Math.pow(1 - 2.25577e-5 * h, 5.2559); pf.rho = +(p / (287.05 * (wx.temp + 273.15))).toFixed(3); $('rho').value = pf.rho; done.push('気温' + wx.temp + '℃→ρ' + pf.rho); }
+        } catch (e) { console.warn('weather', e); }
+        try {
+          setProg('信号を取得中…', 0);
+          const o = await Ext.osm(pts, {
+            onSignals: (signals, p) => {                 // レスポンスごとに地図へ反映＋進捗更新
+              MapView.drawSignals(signals);
+              setProg(`信号 ${p.done}/${p.total}区間・${signals.length}基`, p.done / p.total);
+            },
+            onPhase: (name) => { if (name === 'surface') setProg('路面を取得中…', 1); }
+          });
+          MapView.drawSignals(o.signals);
+          plan.signalRate = Math.round(o.signals.length / km * 18); $('signalRate').value = plan.signalRate; persistRoutePlan();
+          done.push('信号' + o.signals.length + '基(' + plan.signalRate + 's/km)');
+          if (o.crr) { pf.crr = o.crr; $('crr').value = o.crr; done.push('路面' + o.surface + '→Crr' + o.crr); }
+        } catch (e) { console.warn('osm', e); setProg('信号取得エラー: ' + e.message, null, true); }
+        State.save(); updateDerived(); recompute();
+        if (done.length) { setProg('反映: ' + done.join(' / ')); hideProg(6000); }
+        else { setProg('取得できたデータがありませんでした', null, true); hideProg(4000); }
+      } catch (e) { setProg('取得エラー: ' + e.message, null, true); hideProg(5000); }
+      $('extBtn').textContent = '🌐';
     });
 
     // ペイン表示切替
